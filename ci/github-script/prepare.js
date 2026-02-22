@@ -209,8 +209,6 @@ module.exports = async ({ github, context, core, dry }) => {
     core.setOutput('mergedSha', mergedSha)
     core.setOutput('targetSha', targetSha)
 
-    core.setOutput('systems', require('../supportedSystems.json'))
-
     const files = (
       await github.paginate(github.rest.pulls.listFiles, {
         ...context.repo,

@@ -15,9 +15,6 @@ on:
       targetSha:
         required: true
         type: string
-      systems:
-        required: true
-        type: string
       testVersions:
         required: false
         default: false
@@ -139,14 +136,36 @@ jobs:
         run: |
           echo "versions=$(trusted/ci/supportedVersions.nix --arg pinnedJson untrusted/ci/pinned.json)" >> "$GITHUB_OUTPUT"
 
+  systems:
+    runs-on: ubuntu-slim
+    outputs:
+      systems: ${{ steps.systems.outputs.systems }}
+    steps:
+      - name: Check out the the target branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.targetSha }}
+          path: trusted
+          sparse-checkout: |
+            pkgs/top-level/release-supported-systems.json
+
+      - name: Load supported systems
+        id: systems
+        # We need to use jq here to ensure the output is one line.
+        run: |
+          jq -r '"systems=\(@json)"' \
+            trusted/pkgs/top-level/release-supported-systems.json \
+            >> "$GITHUB_OUTPUT"
+
   eval:
     runs-on: ubuntu-24.04-arm
-    needs: versions
+    needs: [versions, systems]
     if: ${{ !cancelled() && !failure() }}
     strategy:
       fail-fast: false
       matrix:
-        system: ${{ fromJSON(inputs.systems) }}
+        system: ${{ fromJSON(needs.systems.outputs.systems) }}
         version:
           - "" # Default Eval triggering rebuild labels and such.
           - ${{ fromJSON(needs.versions.outputs.versions || '[]') }} # Only for ci/pinned.json updates.
@@ -350,7 +369,7 @@ jobs:
   # Creates a matrix of Eval performance for various versions and systems.
   report:
     runs-on: ubuntu-slim
-    needs: [versions, eval]
+    needs: [versions, systems, eval]
     steps:
       - name: Download output paths and eval stats for all versions
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
@@ -362,7 +381,7 @@ jobs:
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         env:
           ARTIFACT_PREFIX: ${{ inputs.artifact-prefix }}
-          SYSTEMS: ${{ inputs.systems }}
+          SYSTEMS: ${{ needs.systems.outputs.systems }}
           VERSIONS: ${{ needs.versions.outputs.versions }}
           CI_PIN_BUMP_COMMIT: ${{ needs.versions.outputs.ciPinBumpCommit }}
         with:

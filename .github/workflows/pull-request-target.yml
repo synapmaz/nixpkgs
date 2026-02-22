@@ -28,7 +28,6 @@ jobs:
       headBranch: ${{ steps.prepare.outputs.head }}
       mergedSha: ${{ steps.prepare.outputs.mergedSha }}
       targetSha: ${{ steps.prepare.outputs.targetSha }}
-      systems: ${{ steps.prepare.outputs.systems }}
       touched: ${{ steps.prepare.outputs.touched }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -88,7 +87,6 @@ jobs:
       mergedSha: ${{ needs.prepare.outputs.mergedSha }}
       headSha: ${{ github.event.pull_request.head.sha }}
       targetSha: ${{ needs.prepare.outputs.targetSha }}
-      systems: ${{ needs.prepare.outputs.systems }}
       testVersions: ${{ contains(fromJSON(needs.prepare.outputs.touched), 'pinned') && !contains(fromJSON(needs.prepare.outputs.headBranch).type, 'development') }}
 
   bot:
